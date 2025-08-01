@@ -263,8 +263,8 @@ func (u *UI) Box() {
 	// Find dimensions of text
 	boxWidth := 10
 	for _, s := range u.boxText {
-		if len(s) > boxWidth && len(s) < w-4 {
-			boxWidth = len(s)
+		if len(s) > boxWidth {
+			boxWidth = min(len(s), w-4)
 		}
 	}
 	boxHeight := len(u.boxText)
