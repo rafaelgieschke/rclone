@@ -6,8 +6,10 @@ package ncdu
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path"
 	"reflect"
 	"sort"
@@ -806,6 +808,29 @@ func (u *UI) enter() {
 	dirPos := u.dirPosMap[u.path]
 	d, _ := u.d.GetDir(u.sortPerm[dirPos.entry])
 	if d == nil {
+		if obj, isFile := u.entries[u.sortPerm[dirPos.entry]].(fs.Object); isFile {
+			reader, err := obj.Open(context.Background())
+			if err != nil {
+				u.popupBox([]string{
+					"Error opening file:",
+					err.Error(),
+				})
+				return
+			}
+			pager := exec.Command("less")
+			pager.Env = append(os.Environ(), "LESS=")
+			pager.Stdout = os.Stdout
+			pager.Stderr = os.Stderr
+			writer, _ := pager.StdinPipe()
+			go func() {
+				defer reader.Close()
+				defer writer.Close()
+				io.Copy(writer, reader)
+			}()
+			u.s.Suspend()
+			pager.Run()
+			u.s.Resume()
+		}
 		return
 	}
 	u.setCurrentDir(d)
